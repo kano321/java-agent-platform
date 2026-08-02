@@ -65,7 +65,6 @@ LLM_MODEL_NAME=gpt-4o-mini
 - [架构图](docs/ARCHITECTURE.md)
 - [本地部署](docs/DEPLOY_LOCAL.md)
 - [Docker 部署](docs/DEPLOY_DOCKER.md)
-- [简历文案](docs/RESUME.md)
 - [项目结构](docs/PROJECT_STRUCTURE.md)
 
 ## Milvus 配置
