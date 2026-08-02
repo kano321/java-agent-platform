@@ -205,6 +205,7 @@
           <div v-if="reviewResult" class="panel">
             <div class="panel-head">
               <h2>审查报告</h2>
+              <button @click="exportReviewMarkdown" :disabled="!reviewResult">导出 Markdown</button>
             </div>
             <pre class="markdown-box">{{ reviewResult }}</pre>
           </div>
@@ -297,43 +298,14 @@
       </main>
     </div>
 
-    <suspended-ball-chat
-      app-name="java-agent-platform"
-      domain-name="local-user"
-      url="/api/v1/chat/stream"
-      title="Java Agent 助手"
-      location="right-bottom"
-      :enable-streaming="true"
-      :enable-context="true"
-      :enable-local-storage="true"
-      :allow-history-search="true"
-      :enable-image-upload="true"
-      :enable-multi-image-upload="true"
-      :enable-voice-input="true"
-      :enable-auto-speech="true"
-      :enable-deep-thinking="true"
-      :enable-fullscreen-toggle="true"
-      :show-header="true"
-      :show-clear-button="true"
-      :show-theme-toggle="true"
-      :show-avatar="true"
-      :align-user-messages-right="true"
-      :show-task-running-box="true"
-      task-running-text="AI 正在处理中..."
-      :assistant-config="assistantConfig"
-      :welcome-config="welcomeConfig"
-      :preset-tasks="presetTasks"
-    ></suspended-ball-chat>
   </div>
 
   <script src="assets/vue.global.prod.js"></script>
-  <script src="assets/lodash.min.js"></script>
   <script>
     if (window.Vue && typeof window.Vue.component !== 'function') {
       window.Vue.component = function () {}
     }
   </script>
-  <script src="assets/suspended-ball-chat.umd.js"></script>
   <script src="assets/app.js"></script>
 </body>
 </html>

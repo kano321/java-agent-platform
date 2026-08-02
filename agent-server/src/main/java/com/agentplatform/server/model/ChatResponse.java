@@ -1,8 +1,7 @@
 package com.agentplatform.server.model;
 
 /**
- * Response format expected by AISuspendedBallChat for a normal JSON chat
- * request: code 0 plus result.answer.
+ * Response format for a normal JSON chat request: code 0 plus result.answer.
  */
 public record ChatResponse(int code, ChatResult result, String message, String error) {
 

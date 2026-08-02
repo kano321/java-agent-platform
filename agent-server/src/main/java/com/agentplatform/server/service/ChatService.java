@@ -29,7 +29,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Bridges the AISuspendedBallChat request format to LangChain4j chat models.
+ * Bridges the dashboard chat request format to LangChain4j chat models.
  * When no LLM API key is configured it falls back to a local response so the
  * frontend can still be exercised during integration testing.
  */
@@ -256,9 +256,9 @@ public class ChatService {
 
     private String fallbackText(ChatRequest request) {
         return """
-                当前没有配置 LLM_API_KEY，后端已进入本地联调模式，暂时无法调用大模型。
+                当前没有配置大模型，后端已进入本地联调模式，暂时无法调用大模型。
 
-                配置方式：启动前设置 LLM_API_KEY、LLM_BASE_URL、LLM_MODEL_NAME，然后重启应用。
+                配置方式：编辑项目根目录的 .env 文件，填写 LLM_API_KEY、LLM_BASE_URL、LLM_MODEL_NAME，然后重启应用。
 
                 你发送的问题是：%s
                 """.formatted(request.query());

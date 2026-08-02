@@ -6,6 +6,10 @@
 - Maven 无需安装，项目内置 Maven Wrapper
 - 推荐 Docker（用于本地启动 MySQL 和 Redis）
 
+## 大模型配置
+
+编辑项目根目录的 `.env` 文件，填写 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL_NAME`。本地启动时系统会自动读取该文件，不需要每次在终端设置环境变量。
+
 ## 2. 单元测试（H2，不依赖外部服务）
 
 ```powershell

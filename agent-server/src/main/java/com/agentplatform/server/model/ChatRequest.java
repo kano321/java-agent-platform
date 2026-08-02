@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /**
  * Request body shared by the normal and SSE chat endpoints. Field names match
- * the request built by the AISuspendedBallChat frontend component.
+ * the request built by the platform dashboard chat component.
  */
 public record ChatRequest(
         @NotBlank(message = "query is required") String query,

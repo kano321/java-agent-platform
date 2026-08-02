@@ -14,7 +14,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Chat endpoints used by the AISuspendedBallChat frontend.
+ * Chat endpoints used by the platform dashboard.
  */
 @RestController
 @RequestMapping("/api/v1/chat")

@@ -89,6 +89,22 @@ class CodeReviewIntegrationTest {
         assertThat(ragNode.path("data").size()).isGreaterThanOrEqualTo(1);
     }
 
+    @Test
+    void ragIndexAcceptsLongContent() throws Exception {
+        Map<String, Object> body = Map.of(
+                "sourceType", "test",
+                "sourceId", "long-content-test",
+                "content", "A".repeat(70000));
+
+        ResponseEntity<String> response =
+                restTemplate.postForEntity("/api/v1/rag/documents", body, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode node = objectMapper.readTree(response.getBody());
+        assertThat(node.path("code").asInt()).isZero();
+        assertThat(node.path("data").asText()).isNotBlank();
+    }
+
     private void copyTree(Path source, Path target) throws Exception {
         try (Stream<Path> stream = Files.walk(source)) {
             for (Path path : stream.toList()) {

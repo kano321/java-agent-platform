@@ -3,7 +3,7 @@ package com.agentplatform.server.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * One SSE chunk consumed by the AISuspendedBallChat streaming parser.
+ * One SSE chunk consumed by the dashboard streaming chat parser.
  */
 public record ChatStreamChunk(
         int code,

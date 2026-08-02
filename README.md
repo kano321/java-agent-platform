@@ -32,6 +32,18 @@
 
 默认端口：`8080`
 
+## 大模型配置
+
+编辑项目根目录的 `.env` 文件，只需配置一次，之后直接启动即可：
+
+```dotenv
+LLM_API_KEY=sk-...
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL_NAME=gpt-4o-mini
+```
+
+本地启动脚本和 Docker Compose 都会读取该文件。`.env` 已在 `.gitignore` 中，密钥不会提交。未填写 `LLM_API_KEY` 时，代码评审使用纯规则分析，对话接口返回本地联调提示。
+
 ## 主要 API
 
 - `GET  /api/v1/health`
@@ -46,7 +58,7 @@
 - `POST /api/v1/chat`
 - `POST /api/v1/chat/stream` SSE
 
-前端已内置平台控制台和 `AISuspendedBallChat` 悬浮球 AI 助手，启动后访问 `http://localhost:8080` 即可查看 Agent、任务、代码审查、RAG 和 AI 对话。详细说明见 [前端联调说明](docs/FRONTEND_INTEGRATION.md)。
+前端已内置平台控制台，启动后访问 `http://localhost:8080` 即可查看 Agent、任务、代码审查、RAG 和 AI 对话。详细说明见 [前端联调说明](docs/FRONTEND_INTEGRATION.md)。
 
 ## 文档
 

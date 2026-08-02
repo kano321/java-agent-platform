@@ -19,7 +19,7 @@ public class ReviewReportEntity {
 
     private String taskId;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String repoPath;
 
     private String branch;
@@ -31,13 +31,13 @@ public class ReviewReportEntity {
     private Integer issueCount;
     private Boolean llmEnabled;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String llmInsight;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String summary;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String markdown;
 
     private Instant createdAt;

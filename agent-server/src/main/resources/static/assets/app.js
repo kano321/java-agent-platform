@@ -107,19 +107,6 @@
           { id: 'review', label: '代码审查' },
           { id: 'rag', label: 'RAG' },
           { id: 'chat', label: '对话' }
-        ],
-        assistantConfig: {
-          name: '项目介绍助手',
-          description: '介绍 java-agent-platform 的功能和使用方法'
-        },
-        welcomeConfig: {
-          title: 'java-agent-platform 助手',
-          description: '问我项目功能、接口用法、代码审查流程或模型配置都可以。'
-        },
-        presetTasks: [
-          { id: 'intro', title: '项目是做什么的', description: '介绍 java-agent-platform 的定位和核心能力' },
-          { id: 'review', title: '如何代码审查', description: '说明如何发起一次 Java 代码审查并查看报告' },
-          { id: 'llm', title: '如何配置模型', description: '说明如何配置真实 LLM 模型' }
         ]
       }
     },
@@ -294,6 +281,19 @@
           this.reviewBusy = false
         }
       },
+      exportReviewMarkdown() {
+        if (!this.reviewResult) return
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+        const blob = new Blob([this.reviewResult], { type: 'text/markdown;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = 'java-agent-platform-review-' + timestamp + '.md'
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+      },
       async searchRag() {
         if (!this.ragQuery.trim()) return
         try {
@@ -370,5 +370,5 @@
         return isNaN(date.getTime()) ? value : date.toLocaleString()
       }
     }
-  }).use(window.SuspendedBallChat.default).mount('#app')
+  }).mount('#app')
 })()

@@ -2,8 +2,9 @@
 
 ## 1. 构建并启动
 
+编辑项目根目录 `.env` 文件，设置 `LLM_API_KEY` 后启动（可选，不配置则使用规则评审）：
+
 ```powershell
-$env:LLM_API_KEY='sk-xxx'   # 可选，不配置则使用规则评审
 docker compose up -d --build
 ```
 

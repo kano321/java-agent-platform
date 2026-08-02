@@ -20,7 +20,7 @@ public class RagDocumentEntity {
     private String sourceType;
     private String sourceId;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String content;
 
     private Instant createdAt;

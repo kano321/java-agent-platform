@@ -76,6 +76,7 @@ class ChatIntegrationTest {
     void staticChatPageIsServed() {
         ResponseEntity<String> response = restTemplate.getForEntity("/", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains("suspended-ball-chat");
+        assertThat(response.getBody()).contains("chat-panel");
+        assertThat(response.getBody()).doesNotContain("suspended-ball-chat");
     }
 }
