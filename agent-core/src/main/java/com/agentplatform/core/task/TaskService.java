@@ -164,6 +164,17 @@ public class TaskService {
         return logBroker.getLogs(taskId);
     }
 
+    public void deleteTask(String taskId) {
+        AgentTask task = getTask(taskId);
+        if (task.getStatus() == TaskStatus.RUNNING) {
+            throw new IllegalStateException(
+                    "Task is running and cannot be deleted: " + taskId);
+        }
+        tasks.remove(taskId);
+        taskRepository.deleteById(taskId);
+        logBroker.delete(taskId);
+    }
+
     private AgentTask requireTask(String taskId) {
         AgentTask task = tasks.get(taskId);
         if (task == null) {

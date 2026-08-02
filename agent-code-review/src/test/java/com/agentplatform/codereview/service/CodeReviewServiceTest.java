@@ -53,7 +53,7 @@ class CodeReviewServiceTest {
                 ragService);
 
         CodeReviewReport report = service.runReview(
-                new ReviewCreateRequest(tempDir.toString(), null, 100, "general"),
+                new ReviewCreateRequest(tempDir.toString(), null, 100, "general", null),
                 "task_1");
 
         assertThat(report.getReportId()).startsWith("review_");

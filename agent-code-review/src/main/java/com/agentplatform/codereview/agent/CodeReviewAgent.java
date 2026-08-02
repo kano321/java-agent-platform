@@ -54,7 +54,7 @@ public class CodeReviewAgent extends AbstractAgent {
         } catch (Exception e) {
             Path candidate = Path.of(input);
             if (Files.isDirectory(candidate)) {
-                return new ReviewCreateRequest(input, null, null, null);
+                return new ReviewCreateRequest(input, null, null, null, null);
             }
             throw new AgentExecutionException(
                     "Invalid code review input, expected JSON or repository path: " + input);

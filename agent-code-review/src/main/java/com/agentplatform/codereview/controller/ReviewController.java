@@ -52,7 +52,7 @@ public class ReviewController {
             throws JsonProcessingException {
         String input = objectMapper.writeValueAsString(request);
         TaskCreateRequest taskRequest = new TaskCreateRequest(
-                "code_review_agent",
+                request.agentId(),
                 input,
                 Map.of("type", "code_review"),
                 true);

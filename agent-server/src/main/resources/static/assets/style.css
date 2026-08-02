@@ -213,7 +213,8 @@ button:disabled {
 }
 
 input,
-textarea {
+textarea,
+select {
   padding: 7px 10px;
   border: 1px solid #c9ced6;
   border-radius: 6px;
@@ -223,7 +224,8 @@ textarea {
 }
 
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   border-color: #2563eb;
 }
 
@@ -327,6 +329,100 @@ textarea:focus {
   max-height: 420px;
 }
 
+.chat-layout {
+  display: flex;
+  gap: 12px;
+  height: calc(100vh - 150px);
+}
+
+.chat-history-panel {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  flex: 0 0 260px;
+  min-height: 0;
+  border: 1px solid #d9dde3;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.chat-history-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e6e9ee;
+}
+
+.chat-history-panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2430;
+}
+
+.chat-history-panel > input {
+  width: calc(100% - 24px);
+  margin: 10px 12px 4px;
+}
+
+.chat-history-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.chat-history-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  height: auto;
+  margin-bottom: 6px;
+  padding: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #333944;
+  text-align: left;
+  white-space: normal;
+}
+
+.chat-history-item.active {
+  border-color: #c9ced6;
+  background: #f0f4ff;
+  color: #1d4ed8;
+}
+
+.chat-history-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chat-history-time {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #737a86;
+}
+
+.chat-history-empty {
+  padding: 16px;
+  color: #737a86;
+  font-size: 13px;
+  text-align: center;
+}
+
+.chat-layout .chat-panel {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+}
+
 .chat-panel {
   display: flex;
   flex-direction: column;
@@ -410,5 +506,20 @@ textarea:focus {
     flex-wrap: wrap;
     height: auto;
     padding: 10px;
+  }
+
+  .chat-layout {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .chat-history-panel {
+    width: 100%;
+    flex: 0 0 auto;
+    max-height: 220px;
+  }
+
+  .chat-layout .chat-panel {
+    height: calc(100vh - 120px);
   }
 }

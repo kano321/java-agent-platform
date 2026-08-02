@@ -9,6 +9,7 @@ import com.agentplatform.core.task.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -68,6 +69,12 @@ public class TaskController {
     @GetMapping("/{taskId}/logs")
     public ApiResponse<List<TaskLogEntry>> getTaskLogs(@PathVariable String taskId) {
         return ApiResponse.success(taskService.getTaskLogs(taskId));
+    }
+
+    @DeleteMapping("/{taskId}")
+    public ApiResponse<Void> deleteTask(@PathVariable String taskId) {
+        taskService.deleteTask(taskId);
+        return ApiResponse.success("task deleted", null);
     }
 
     @GetMapping(value = "/{taskId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

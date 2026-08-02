@@ -101,6 +101,15 @@ public class TaskLogBroker {
         }
     }
 
+    /**
+     * Removes buffered logs and closes any open SSE streams for a deleted task.
+     */
+    public void delete(String taskId) {
+        logs.remove(taskId);
+        sequences.remove(taskId);
+        complete(taskId);
+    }
+
     private boolean isTerminal(TaskStatus status) {
         return status == TaskStatus.SUCCEEDED
                 || status == TaskStatus.FAILED

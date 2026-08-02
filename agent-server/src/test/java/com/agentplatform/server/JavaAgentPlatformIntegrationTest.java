@@ -83,6 +83,14 @@ class JavaAgentPlatformIntegrationTest {
                 restTemplate.getForEntity("/api/v1/tasks/" + taskId + "/logs", String.class);
         JsonNode logsNode = objectMapper.readTree(logs.getBody());
         assertThat(logsNode.path("data").toString()).contains("Demo agent started");
+
+        ResponseEntity<String> deleted = restTemplate.exchange(
+                "/api/v1/tasks/" + taskId, HttpMethod.DELETE, null, String.class);
+        assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        ResponseEntity<String> afterDelete =
+                restTemplate.getForEntity("/api/v1/tasks/" + taskId, String.class);
+        assertThat(afterDelete.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test

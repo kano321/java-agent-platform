@@ -1,5 +1,6 @@
 (function () {
   const { createApp } = Vue
+  const CHAT_STORAGE_KEY = 'java-agent-platform.chat.history.v1'
 
   async function request(url, options) {
     const response = await fetch(url, options || {})
@@ -23,6 +24,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body || {})
     }),
+    del: (url) => request(url, { method: 'DELETE' }),
     text: async (url) => {
       const response = await fetch(url)
       if (!response.ok) throw new Error('HTTP ' + response.status)
@@ -88,10 +90,20 @@
         reviewMaxFiles: 100,
         reviewDiffBase: '',
         reviewFocus: 'general',
+        reviewAgentId: 'code_review_agent',
         reviewBusy: false,
         reviewStatus: '',
         reviewLogs: [],
         reviewResult: '',
+        agentKinds: ['GENERAL', 'CODE_REVIEW', 'RESEARCH', 'DATA_ANALYSIS', 'DEMO', 'REMOTE'],
+        agentForm: {
+          agentId: '',
+          name: '',
+          kind: 'REMOTE',
+          version: '1.0.0',
+          tags: '',
+          executionEndpoint: ''
+        },
         ragQuery: '',
         ragSourceType: 'review',
         ragSourceId: '',
@@ -99,6 +111,9 @@
         chatMessages: [],
         chatInput: '',
         chatBusy: false,
+        chatHistory: [],
+        chatHistoryQuery: '',
+        currentChatId: null,
         sse: null,
         navItems: [
           { id: 'overview', label: '总览' },
@@ -119,10 +134,23 @@
       },
       reviewLogsText() {
         return this.reviewLogs.map((entry) => `[${entry.level || 'INFO'}] ${entry.message || ''}`).join('\n')
+      },
+      filteredChatHistory() {
+        const query = this.chatHistoryQuery.trim().toLowerCase()
+        if (!query) return this.chatHistory
+        return this.chatHistory.filter((item) => {
+          const title = (item.title || '').toLowerCase()
+          const content = (item.messages || [])
+            .map((message) => message.content || '')
+            .join(' ')
+            .toLowerCase()
+          return title.includes(query) || content.includes(query)
+        })
       }
     },
     mounted() {
       this.loadAll()
+      this.initChatHistory()
     },
     methods: {
       async loadAll() {
@@ -157,6 +185,7 @@
       switchTab(id) {
         this.current = id
         if (id === 'agents') this.loadAgents()
+        if (id === 'review') this.loadAgents()
         if (id === 'tasks') this.loadTasks()
         if (id === 'rag') {
           this.loadRagDocs()
@@ -167,6 +196,60 @@
         try {
           const result = await api.get('/api/v1/agents')
           this.agents = result.data
+          if (!this.agents.some((agent) => agent.agentId === this.reviewAgentId)) {
+            this.reviewAgentId = this.agents.length ? this.agents[0].agentId : 'code_review_agent'
+          }
+        } catch (e) {
+          this.error = e.message
+        }
+      },
+      async registerAgent() {
+        const agentId = this.agentForm.agentId.trim()
+        const name = this.agentForm.name.trim()
+        const endpoint = this.agentForm.executionEndpoint.trim()
+        if (!agentId || !name) {
+          this.error = '请填写 Agent ID 和名称'
+          return
+        }
+        if (!endpoint) {
+          this.error = '请填写执行端点，远程 Agent 需要它来接收任务'
+          return
+        }
+        try {
+          await api.post('/api/v1/agents/register', {
+            agentId,
+            name,
+            description: 'Custom agent registered from dashboard',
+            kind: this.agentForm.kind,
+            version: this.agentForm.version.trim() || '1.0.0',
+            tags: this.agentForm.tags
+              .split(',')
+              .map((tag) => tag.trim())
+              .filter(Boolean),
+            executionEndpoint: endpoint
+          })
+          this.agentForm.agentId = ''
+          this.agentForm.name = ''
+          this.agentForm.tags = ''
+          this.agentForm.executionEndpoint = ''
+          await this.loadAgents()
+        } catch (e) {
+          this.error = e.message
+        }
+      },
+      async heartbeatAgent(agentId) {
+        try {
+          await api.post('/api/v1/agents/' + encodeURIComponent(agentId) + '/heartbeat')
+          await this.loadAgents()
+        } catch (e) {
+          this.error = e.message
+        }
+      },
+      async unregisterAgent(agentId) {
+        if (!window.confirm('确认注销 Agent ' + agentId + ' 吗？')) return
+        try {
+          await api.del('/api/v1/agents/' + encodeURIComponent(agentId))
+          await this.loadAgents()
         } catch (e) {
           this.error = e.message
         }
@@ -175,6 +258,23 @@
         try {
           const result = await api.get('/api/v1/tasks')
           this.tasks = result.data
+        } catch (e) {
+          this.error = e.message
+        }
+      },
+      async deleteTask(task) {
+        if (!window.confirm('确认删除任务 ' + task.taskId + ' 吗？')) return
+        try {
+          await api.del('/api/v1/tasks/' + encodeURIComponent(task.taskId))
+          if (this.activeTaskId === task.taskId) {
+            this.activeTaskId = ''
+            this.taskLogs = []
+            if (this.sse) {
+              this.sse.close()
+              this.sse = null
+            }
+          }
+          await this.loadTasks()
         } catch (e) {
           this.error = e.message
         }
@@ -247,7 +347,8 @@
             repoPath: this.reviewRepoPath.trim(),
             maxFiles: this.reviewMaxFiles || 100,
             diffBase: this.reviewDiffBase || null,
-            focus: this.reviewFocus || 'general'
+            focus: this.reviewFocus || 'general',
+            agentId: this.reviewAgentId || 'code_review_agent'
           })
           const taskId = created.data.taskId
           let lastTask = null
@@ -264,6 +365,13 @@
           }
           if (this.reviewStatus === 'FAILED' || this.reviewStatus === 'CANCELED') {
             this.reviewResult = '审查任务' + this.reviewStatus + '：' + (lastTask && lastTask.error ? lastTask.error : '未生成报告')
+            return
+          }
+          if (this.reviewAgentId !== 'code_review_agent') {
+            this.reviewResult = lastTask && (lastTask.output || lastTask.error)
+              ? lastTask.output || lastTask.error
+              : '任务已完成，但没有输出。'
+            await this.loadAll()
             return
           }
           const reports = await api.get('/api/v1/reviews?taskId=' + taskId)
@@ -329,6 +437,70 @@
           this.error = e.message
         }
       },
+      initChatHistory() {
+        let saved = []
+        try {
+          saved = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || '[]')
+        } catch (e) {
+          saved = []
+        }
+        this.chatHistory = Array.isArray(saved)
+          ? saved.filter((item) => item && item.id && Array.isArray(item.messages))
+          : []
+        if (this.chatHistory.length === 0) {
+          this.newChat()
+          return
+        }
+        this.currentChatId = this.chatHistory[0].id
+        this.chatMessages = this.chatHistory[0].messages
+      },
+      persistChatHistory() {
+        try {
+          localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(this.chatHistory))
+        } catch (e) {
+          // localStorage can be unavailable in some embedded browsers
+        }
+      },
+      currentChat() {
+        return this.chatHistory.find((item) => item.id === this.currentChatId) || null
+      },
+      touchCurrentChat() {
+        const chat = this.currentChat()
+        if (!chat) return
+        chat.updatedAt = new Date().toISOString()
+        this.persistChatHistory()
+      },
+      updateCurrentChatTitle() {
+        const chat = this.currentChat()
+        if (!chat || chat.title !== '新对话') return
+        const firstUserMessage = chat.messages.find((message) => message.role === 'user' && message.content)
+        if (firstUserMessage) {
+          chat.title = firstUserMessage.content.slice(0, 30)
+        }
+      },
+      newChat() {
+        const chat = {
+          id: 'chat_' + Date.now(),
+          title: '新对话',
+          messages: [],
+          updatedAt: new Date().toISOString()
+        }
+        this.chatHistory.unshift(chat)
+        this.currentChatId = chat.id
+        this.chatMessages = chat.messages
+        this.chatInput = ''
+        this.chatHistoryQuery = ''
+        this.persistChatHistory()
+        this.scrollChat()
+      },
+      selectChat(id) {
+        const chat = this.chatHistory.find((item) => item.id === id)
+        if (!chat) return
+        this.currentChatId = id
+        this.chatMessages = chat.messages
+        this.chatInput = ''
+        this.scrollChat()
+      },
       async sendChat() {
         const text = this.chatInput.trim()
         if (!text || this.chatBusy) return
@@ -337,6 +509,8 @@
         this.chatMessages.push(message)
         this.chatInput = ''
         this.chatBusy = true
+        this.updateCurrentChatTitle()
+        this.touchCurrentChat()
         this.scrollChat()
         try {
           await api.streamChat({
@@ -356,6 +530,7 @@
           message.content = '请求失败：' + e.message
         } finally {
           this.chatBusy = false
+          this.touchCurrentChat()
         }
       },
       scrollChat() {

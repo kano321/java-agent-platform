@@ -105,6 +105,35 @@ class CodeReviewIntegrationTest {
         assertThat(node.path("data").asText()).isNotBlank();
     }
 
+    @Test
+    void reviewTaskCanBeRoutedToSelectedAgent() throws Exception {
+        Map<String, Object> body = Map.of(
+                "repoPath", "E:/not-used",
+                "agentId", "demo_agent");
+
+        ResponseEntity<String> created =
+                restTemplate.postForEntity("/api/v1/reviews", body, String.class);
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        JsonNode data = objectMapper.readTree(created.getBody()).path("data");
+        assertThat(data.path("agentId").asText()).isEqualTo("demo_agent");
+
+        String taskId = data.path("taskId").asText();
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(10))
+                .untilAsserted(() -> {
+                    ResponseEntity<String> detail =
+                            restTemplate.getForEntity("/api/v1/tasks/" + taskId, String.class);
+                    JsonNode node = objectMapper.readTree(detail.getBody());
+                    assertThat(node.path("data").path("status").asText()).isEqualTo("SUCCEEDED");
+                });
+
+        ResponseEntity<String> detail =
+                restTemplate.getForEntity("/api/v1/tasks/" + taskId, String.class);
+        JsonNode task = objectMapper.readTree(detail.getBody()).path("data");
+        assertThat(task.path("output").asText()).contains("Demo analysis completed");
+    }
+
     private void copyTree(Path source, Path target) throws Exception {
         try (Stream<Path> stream = Files.walk(source)) {
             for (Path path : stream.toList()) {

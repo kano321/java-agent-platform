@@ -9,10 +9,12 @@ public record ReviewCreateRequest(
         @NotBlank(message = "repoPath is required") String repoPath,
         String diffBase,
         Integer maxFiles,
-        String focus) {
+        String focus,
+        String agentId) {
 
     public ReviewCreateRequest {
         maxFiles = maxFiles == null || maxFiles <= 0 ? 200 : maxFiles;
         focus = focus == null || focus.isBlank() ? "general" : focus;
+        agentId = agentId == null || agentId.isBlank() ? "code_review_agent" : agentId;
     }
 }

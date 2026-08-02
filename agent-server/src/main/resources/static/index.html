@@ -90,6 +90,38 @@
               <h2>Agent 注册中心</h2>
               <button @click="loadAgents">刷新</button>
             </div>
+            <div class="form-grid">
+              <label>
+                Agent ID
+                <input v-model="agentForm.agentId" placeholder="例如 custom_agent" />
+              </label>
+              <label>
+                名称
+                <input v-model="agentForm.name" placeholder="例如 Custom Agent" />
+              </label>
+              <label>
+                类型
+                <select v-model="agentForm.kind">
+                  <option v-for="kind in agentKinds" :key="kind" :value="kind">{{ kind }}</option>
+                </select>
+              </label>
+              <label>
+                版本
+                <input v-model="agentForm.version" placeholder="1.0.0" />
+              </label>
+              <label>
+                标签
+                <input v-model="agentForm.tags" placeholder="java,remote,自定义" />
+              </label>
+              <label class="full">
+                执行端点
+                <input v-model="agentForm.executionEndpoint" placeholder="http://localhost:9999/execute" />
+              </label>
+            </div>
+            <div class="inline-actions">
+              <button @click="registerAgent">注册 Agent</button>
+              <button @click="loadAgents">刷新</button>
+            </div>
             <table class="data-table">
               <thead>
                 <tr>
@@ -98,6 +130,7 @@
                   <th>Status</th>
                   <th>Version</th>
                   <th>Tags</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -107,9 +140,13 @@
                   <td><span class="status-badge" :class="agent.status.toLowerCase()">{{ agent.status }}</span></td>
                   <td>{{ agent.version }}</td>
                   <td>{{ (agent.tags || []).join(', ') }}</td>
+                  <td>
+                    <button @click="heartbeatAgent(agent.agentId)">心跳</button>
+                    <button @click="unregisterAgent(agent.agentId)">注销</button>
+                  </td>
                 </tr>
                 <tr v-if="agents.length === 0">
-                  <td colspan="5">暂无 Agent</td>
+                  <td colspan="6">暂无 Agent</td>
                 </tr>
               </tbody>
             </table>
@@ -144,6 +181,7 @@
                   <td class="cell-ellipsis">{{ task.output || task.error || '-' }}</td>
                   <td>
                     <button @click="selectTask(task)">日志</button>
+                    <button :disabled="task.status === 'RUNNING'" @click="deleteTask(task)">删除</button>
                   </td>
                 </tr>
                 <tr v-if="tasks.length === 0">
@@ -168,6 +206,14 @@
               <h2>Java 代码审查</h2>
             </div>
             <div class="form-grid">
+              <label>
+                执行 Agent
+                <select v-model="reviewAgentId">
+                  <option v-for="agent in agents" :key="agent.agentId" :value="agent.agentId">
+                    {{ agent.agentId }} ({{ agent.kind }})
+                  </option>
+                </select>
+              </label>
               <label>
                 仓库路径
                 <input v-model="reviewRepoPath" placeholder="E:/path/to/java-project" />
@@ -204,7 +250,7 @@
 
           <div v-if="reviewResult" class="panel">
             <div class="panel-head">
-              <h2>审查报告</h2>
+              <h2>{{ reviewAgentId === 'code_review_agent' ? '审查报告' : '任务输出' }}</h2>
               <button @click="exportReviewMarkdown" :disabled="!reviewResult">导出 Markdown</button>
             </div>
             <pre class="markdown-box">{{ reviewResult }}</pre>
@@ -282,16 +328,38 @@
         </section>
 
         <section v-else-if="current === 'chat'" class="tab-page">
-          <div class="chat-panel">
-            <div class="chat-messages" ref="chatMessages">
-              <div v-for="(msg, index) in chatMessages" :key="index" class="chat-message" :class="msg.role">
-                <div class="chat-role">{{ msg.role === 'user' ? '你' : 'Agent' }}</div>
-                <pre>{{ msg.content }}</pre>
+          <div class="chat-layout">
+            <aside class="chat-history-panel">
+              <div class="chat-history-panel-head">
+                <span class="chat-history-panel-title">历史对话</span>
+                <button @click="newChat">新对话</button>
               </div>
-            </div>
-            <div class="chat-input">
-              <textarea v-model="chatInput" rows="2" placeholder="询问项目、代码审查或接口用法" @keydown.enter.exact.prevent="sendChat"></textarea>
-              <button :disabled="chatBusy" @click="sendChat">发送</button>
+              <input v-model="chatHistoryQuery" placeholder="搜索历史记录" />
+              <div class="chat-history-list">
+                <button
+                  v-for="item in filteredChatHistory"
+                  :key="item.id"
+                  class="chat-history-item"
+                  :class="{ active: item.id === currentChatId }"
+                  @click="selectChat(item.id)"
+                >
+                  <span class="chat-history-name">{{ item.title }}</span>
+                  <span class="chat-history-time">{{ formatTime(item.updatedAt) }}</span>
+                </button>
+                <div v-if="filteredChatHistory.length === 0" class="chat-history-empty">暂无历史记录</div>
+              </div>
+            </aside>
+            <div class="chat-panel">
+              <div class="chat-messages" ref="chatMessages">
+                <div v-for="(msg, index) in chatMessages" :key="index" class="chat-message" :class="msg.role">
+                  <div class="chat-role">{{ msg.role === 'user' ? '你' : 'Agent' }}</div>
+                  <pre>{{ msg.content }}</pre>
+                </div>
+              </div>
+              <div class="chat-input">
+                <textarea v-model="chatInput" rows="2" placeholder="询问项目、代码审查或接口用法" @keydown.enter.exact.prevent="sendChat"></textarea>
+                <button :disabled="chatBusy" @click="sendChat">发送</button>
+              </div>
             </div>
           </div>
         </section>
