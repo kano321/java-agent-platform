@@ -1,0 +1,55 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: agent-platform-mysql
+    environment:
+      MYSQL_DATABASE: agent_platform
+      MYSQL_USER: agent
+      MYSQL_PASSWORD: agent123456
+      MYSQL_ROOT_PASSWORD: root123456
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: agent-platform-redis
+    ports:
+      - "6379:6379"
+
+  app:
+    build: .
+    container_name: agent-platform-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/agent_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      DB_USERNAME: agent
+      DB_PASSWORD: agent123456
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_CACHE_ENABLED: "true"
+      MILVUS_ENABLED: ${MILVUS_ENABLED:-false}
+      MILVUS_HOST: ${MILVUS_HOST:-host.docker.internal}
+      MILVUS_PORT: ${MILVUS_PORT:-19530}
+      MILVUS_COLLECTION_NAME: ${MILVUS_COLLECTION_NAME:-agent_platform_embeddings}
+      MILVUS_DATABASE_NAME: ${MILVUS_DATABASE_NAME:-}
+      MILVUS_USERNAME: ${MILVUS_USERNAME:-}
+      MILVUS_PASSWORD: ${MILVUS_PASSWORD:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-gpt-4o-mini}
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql-data:

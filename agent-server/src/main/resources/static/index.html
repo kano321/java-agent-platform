@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Java Agent Platform</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div id="app" class="platform-shell">
+    <header class="topbar">
+      <div class="brand">Java Agent Platform</div>
+      <div class="health">
+        <span class="dot" :class="healthStatus"></span>
+        {{ healthStatus }}
+      </div>
+      <div class="top-actions">
+        <button @click="loadAll">刷新</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <button
+          v-for="item in navItems"
+          :key="item.id"
+          :class="{ active: current === item.id }"
+          @click="switchTab(item.id)"
+        >
+          {{ item.label }}
+        </button>
+      </aside>
+
+      <main class="content">
+        <div v-if="error" class="error-banner">{{ error }}</div>
+
+        <section v-if="current === 'overview'" class="tab-page">
+          <div class="stat-grid">
+            <div class="stat">
+              <div class="stat-value">{{ health.registeredAgents }}</div>
+              <div class="stat-label">Agents</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">{{ tasks.length }}</div>
+              <div class="stat-label">Tasks</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">{{ reports.length }}</div>
+              <div class="stat-label">Reports</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">{{ ragDocs.length }}</div>
+              <div class="stat-label">RAG Docs</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>最近任务</h2>
+              <button @click="loadTasks">刷新</button>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Agent</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="task in tasks.slice(0, 10)" :key="task.taskId">
+                  <td>{{ task.taskId }}</td>
+                  <td>{{ task.agentId }}</td>
+                  <td><span class="status-badge" :class="task.status.toLowerCase()">{{ task.status }}</span></td>
+                  <td>{{ formatTime(task.createdAt) }}</td>
+                </tr>
+                <tr v-if="tasks.length === 0">
+                  <td colspan="4">暂无任务</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section v-else-if="current === 'agents'" class="tab-page">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Agent 注册中心</h2>
+              <button @click="loadAgents">刷新</button>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Agent</th>
+                  <th>Kind</th>
+                  <th>Status</th>
+                  <th>Version</th>
+                  <th>Tags</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="agent in agents" :key="agent.agentId">
+                  <td>{{ agent.agentId }}</td>
+                  <td>{{ agent.kind }}</td>
+                  <td><span class="status-badge" :class="agent.status.toLowerCase()">{{ agent.status }}</span></td>
+                  <td>{{ agent.version }}</td>
+                  <td>{{ (agent.tags || []).join(', ') }}</td>
+                </tr>
+                <tr v-if="agents.length === 0">
+                  <td colspan="5">暂无 Agent</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section v-else-if="current === 'tasks'" class="tab-page">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>异步任务引擎</h2>
+              <div class="inline-actions">
+                <input v-model="demoTaskInput" placeholder="任务输入，例如 verify pipeline" />
+                <button @click="createDemoTask">创建 Demo 任务</button>
+                <button @click="loadTasks">刷新</button>
+              </div>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Agent</th>
+                  <th>Status</th>
+                  <th>Output</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="task in tasks" :key="task.taskId">
+                  <td>{{ task.taskId }}</td>
+                  <td>{{ task.agentId }}</td>
+                  <td><span class="status-badge" :class="task.status.toLowerCase()">{{ task.status }}</span></td>
+                  <td class="cell-ellipsis">{{ task.output || task.error || '-' }}</td>
+                  <td>
+                    <button @click="selectTask(task)">日志</button>
+                  </td>
+                </tr>
+                <tr v-if="tasks.length === 0">
+                  <td colspan="5">暂无任务</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="activeTaskId" class="panel">
+            <div class="panel-head">
+              <h2>任务日志 {{ activeTaskId }}</h2>
+              <button @click="loadTaskLogs(activeTaskId)">刷新日志</button>
+            </div>
+            <pre class="log-box">{{ taskLogsText }}</pre>
+          </div>
+        </section>
+
+        <section v-else-if="current === 'review'" class="tab-page">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Java 代码审查</h2>
+            </div>
+            <div class="form-grid">
+              <label>
+                仓库路径
+                <input v-model="reviewRepoPath" placeholder="E:/path/to/java-project" />
+              </label>
+              <label>
+                最大文件数
+                <input v-model.number="reviewMaxFiles" type="number" min="1" />
+              </label>
+              <label>
+                Diff Base
+                <input v-model="reviewDiffBase" placeholder="留空则全量扫描" />
+              </label>
+              <label>
+                审查重点
+                <input v-model="reviewFocus" placeholder="general" />
+              </label>
+            </div>
+            <div class="inline-actions">
+              <button :disabled="reviewBusy" @click="runReview">
+                {{ reviewBusy ? '审查中...' : '发起审查' }}
+              </button>
+              <span v-if="reviewStatus" class="status-badge" :class="reviewStatus.toLowerCase()">
+                {{ reviewStatus }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="reviewLogs.length" class="panel">
+            <div class="panel-head">
+              <h2>审查日志</h2>
+            </div>
+            <pre class="log-box">{{ reviewLogsText }}</pre>
+          </div>
+
+          <div v-if="reviewResult" class="panel">
+            <div class="panel-head">
+              <h2>审查报告</h2>
+            </div>
+            <pre class="markdown-box">{{ reviewResult }}</pre>
+          </div>
+        </section>
+
+        <section v-else-if="current === 'rag'" class="tab-page">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>RAG 检索</h2>
+            </div>
+            <div class="inline-actions">
+              <input v-model="ragQuery" placeholder="输入查询内容" @keyup.enter="searchRag" />
+              <button @click="searchRag">搜索</button>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Text</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(hit, index) in ragResults" :key="index">
+                  <td>{{ hit.sourceType }} / {{ hit.sourceId }}</td>
+                  <td>{{ hit.text }}</td>
+                  <td>{{ hit.score }}</td>
+                </tr>
+                <tr v-if="ragResults.length === 0">
+                  <td colspan="3">暂无检索结果</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>索引文档</h2>
+              <button @click="loadRagDocs">刷新</button>
+            </div>
+            <div class="form-grid">
+              <label>
+                来源类型
+                <input v-model="ragSourceType" placeholder="review" />
+              </label>
+              <label>
+                来源 ID
+                <input v-model="ragSourceId" placeholder="report-id" />
+              </label>
+              <label class="full">
+                内容
+                <textarea v-model="ragContent" rows="4" placeholder="要索引的文档内容"></textarea>
+              </label>
+            </div>
+            <button @click="indexRagDoc">索引</button>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Content</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="doc in ragDocs" :key="doc.id">
+                  <td>{{ doc.sourceType }} / {{ doc.sourceId }}</td>
+                  <td class="cell-ellipsis">{{ doc.content }}</td>
+                </tr>
+                <tr v-if="ragDocs.length === 0">
+                  <td colspan="2">暂无文档</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section v-else-if="current === 'chat'" class="tab-page">
+          <div class="chat-panel">
+            <div class="chat-messages" ref="chatMessages">
+              <div v-for="(msg, index) in chatMessages" :key="index" class="chat-message" :class="msg.role">
+                <div class="chat-role">{{ msg.role === 'user' ? '你' : 'Agent' }}</div>
+                <pre>{{ msg.content }}</pre>
+              </div>
+            </div>
+            <div class="chat-input">
+              <textarea v-model="chatInput" rows="2" placeholder="询问项目、代码审查或接口用法" @keydown.enter.exact.prevent="sendChat"></textarea>
+              <button :disabled="chatBusy" @click="sendChat">发送</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <suspended-ball-chat
+      app-name="java-agent-platform"
+      domain-name="local-user"
+      url="/api/v1/chat/stream"
+      title="Java Agent 助手"
+      location="right-bottom"
+      :enable-streaming="true"
+      :enable-context="true"
+      :enable-local-storage="true"
+      :allow-history-search="true"
+      :enable-image-upload="true"
+      :enable-multi-image-upload="true"
+      :enable-voice-input="true"
+      :enable-auto-speech="true"
+      :enable-deep-thinking="true"
+      :enable-fullscreen-toggle="true"
+      :show-header="true"
+      :show-clear-button="true"
+      :show-theme-toggle="true"
+      :show-avatar="true"
+      :align-user-messages-right="true"
+      :show-task-running-box="true"
+      task-running-text="AI 正在处理中..."
+      :assistant-config="assistantConfig"
+      :welcome-config="welcomeConfig"
+      :preset-tasks="presetTasks"
+    ></suspended-ball-chat>
+  </div>
+
+  <script src="assets/vue.global.prod.js"></script>
+  <script src="assets/lodash.min.js"></script>
+  <script>
+    if (window.Vue && typeof window.Vue.component !== 'function') {
+      window.Vue.component = function () {}
+    }
+  </script>
+  <script src="assets/suspended-ball-chat.umd.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
