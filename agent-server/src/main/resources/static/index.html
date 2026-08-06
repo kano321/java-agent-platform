@@ -15,9 +15,6 @@
         <span class="dot" :class="healthStatus"></span>
         {{ healthStatus }}
       </div>
-      <div class="top-actions">
-        <button @click="loadAll">刷新</button>
-      </div>
     </header>
 
     <div class="layout">
@@ -34,6 +31,7 @@
 
       <main class="content">
         <div v-if="error" class="error-banner">{{ error }}</div>
+        <div v-if="notice" class="toast">{{ notice }}</div>
 
         <section v-if="current === 'overview'" class="tab-page">
           <div class="stat-grid">
@@ -58,7 +56,6 @@
           <div class="panel">
             <div class="panel-head">
               <h2>最近任务</h2>
-              <button @click="loadTasks">刷新</button>
             </div>
             <table class="data-table">
               <thead>
@@ -88,7 +85,6 @@
           <div class="panel">
             <div class="panel-head">
               <h2>Agent 注册中心</h2>
-              <button @click="loadAgents">刷新</button>
             </div>
             <div class="form-grid">
               <label>
@@ -120,7 +116,6 @@
             </div>
             <div class="inline-actions">
               <button @click="registerAgent">注册 Agent</button>
-              <button @click="loadAgents">刷新</button>
             </div>
             <table class="data-table">
               <thead>
@@ -130,6 +125,7 @@
                   <th>Status</th>
                   <th>Version</th>
                   <th>Tags</th>
+                  <th>最后心跳</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -140,13 +136,14 @@
                   <td><span class="status-badge" :class="agent.status.toLowerCase()">{{ agent.status }}</span></td>
                   <td>{{ agent.version }}</td>
                   <td>{{ (agent.tags || []).join(', ') }}</td>
+                  <td>{{ formatTime(agent.lastHeartbeatAt) }}</td>
                   <td>
                     <button @click="heartbeatAgent(agent.agentId)">心跳</button>
                     <button @click="unregisterAgent(agent.agentId)">注销</button>
                   </td>
                 </tr>
                 <tr v-if="agents.length === 0">
-                  <td colspan="6">暂无 Agent</td>
+                  <td colspan="7">暂无 Agent</td>
                 </tr>
               </tbody>
             </table>
@@ -160,7 +157,6 @@
               <div class="inline-actions">
                 <input v-model="demoTaskInput" placeholder="任务输入，例如 verify pipeline" />
                 <button @click="createDemoTask">创建 Demo 任务</button>
-                <button @click="loadTasks">刷新</button>
               </div>
             </div>
             <table class="data-table">
@@ -194,7 +190,6 @@
           <div v-if="activeTaskId" class="panel">
             <div class="panel-head">
               <h2>任务日志 {{ activeTaskId }}</h2>
-              <button @click="loadTaskLogs(activeTaskId)">刷新日志</button>
             </div>
             <pre class="log-box">{{ taskLogsText }}</pre>
           </div>
@@ -277,7 +272,7 @@
               <tbody>
                 <tr v-for="(hit, index) in ragResults" :key="index">
                   <td>{{ hit.sourceType }} / {{ hit.sourceId }}</td>
-                  <td>{{ hit.text }}</td>
+                  <td class="cell-ellipsis">{{ hit.text }}</td>
                   <td>{{ hit.score }}</td>
                 </tr>
                 <tr v-if="ragResults.length === 0">
@@ -290,7 +285,6 @@
           <div class="panel">
             <div class="panel-head">
               <h2>索引文档</h2>
-              <button @click="loadRagDocs">刷新</button>
             </div>
             <div class="form-grid">
               <label>

@@ -73,10 +73,6 @@ button {
   background: #e5484d;
 }
 
-.top-actions {
-  margin-left: auto;
-}
-
 button {
   height: 32px;
   padding: 0 12px;
@@ -149,6 +145,23 @@ button:disabled {
   background: #fff0f0;
   color: #b4232a;
   font-size: 13px;
+}
+
+.toast {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  max-width: min(720px, calc(100vw - 32px));
+  padding: 10px 18px;
+  border: 1px solid #b7dcc8;
+  border-radius: 8px;
+  background: #eefbf3;
+  color: #157347;
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
+  word-break: break-word;
 }
 
 .stat-grid {

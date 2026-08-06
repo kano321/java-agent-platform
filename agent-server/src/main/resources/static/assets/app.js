@@ -77,6 +77,7 @@
       return {
         current: 'overview',
         error: '',
+        notice: '',
         health: { status: '-', registeredAgents: 0, tasks: 0 },
         agents: [],
         tasks: [],
@@ -153,6 +154,15 @@
       this.initChatHistory()
     },
     methods: {
+      notify(message) {
+        this.notice = message
+        if (this.noticeTimer) {
+          clearTimeout(this.noticeTimer)
+        }
+        this.noticeTimer = setTimeout(() => {
+          this.notice = ''
+        }, 3200)
+      },
       async loadAll() {
         this.error = ''
         const results = await Promise.allSettled([
@@ -233,14 +243,20 @@
           this.agentForm.tags = ''
           this.agentForm.executionEndpoint = ''
           await this.loadAgents()
+          this.notify('Agent ' + agentId + ' 注册成功')
         } catch (e) {
           this.error = e.message
         }
       },
       async heartbeatAgent(agentId) {
         try {
-          await api.post('/api/v1/agents/' + encodeURIComponent(agentId) + '/heartbeat')
+          const result = await api.post('/api/v1/agents/' + encodeURIComponent(agentId) + '/heartbeat')
           await this.loadAgents()
+          const data = result.data
+          const heartbeatTime = data && data.lastHeartbeatAt
+            ? this.formatTime(data.lastHeartbeatAt)
+            : '已更新'
+          this.notify('心跳成功：Agent ' + agentId + ' 最后心跳时间 ' + heartbeatTime)
         } catch (e) {
           this.error = e.message
         }
@@ -250,6 +266,7 @@
         try {
           await api.del('/api/v1/agents/' + encodeURIComponent(agentId))
           await this.loadAgents()
+          this.notify('Agent ' + agentId + ' 已注销')
         } catch (e) {
           this.error = e.message
         }
@@ -407,6 +424,9 @@
         try {
           const result = await api.get('/api/v1/rag/search?query=' + encodeURIComponent(this.ragQuery.trim()) + '&limit=10')
           this.ragResults = result.data
+          if (!result.data || result.data.length === 0) {
+            this.notify('未找到相关结果，换个关键词试试')
+          }
         } catch (e) {
           this.error = e.message
         }
@@ -433,6 +453,7 @@
           this.ragSourceId = ''
           this.ragContent = ''
           await this.loadRagDocs()
+          this.notify('文档索引成功')
         } catch (e) {
           this.error = e.message
         }
