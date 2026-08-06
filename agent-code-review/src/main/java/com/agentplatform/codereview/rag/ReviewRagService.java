@@ -7,6 +7,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,8 +16,10 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Indexes review reports and searches historical knowledge with embeddings.
@@ -81,12 +84,63 @@ public class ReviewRagService {
                 .queryEmbedding(queryEmbedding)
                 .maxResults(Math.min(Math.max(limit, 1), 20))
                 .build();
+        Map<String, RagDocumentEntity> documentsById = documentRepository.findAll().stream()
+                .collect(Collectors.toMap(RagDocumentEntity::getId, document -> document));
         return embeddingStore.search(request).matches().stream()
-                .map(match -> new RagSearchResult(match.embedded().text(), match.score()))
+                .map(match -> toSearchResult(match, query, documentsById))
                 .toList();
     }
 
     public List<RagDocumentEntity> listDocuments() {
         return documentRepository.findAll();
+    }
+
+    private RagSearchResult toSearchResult(
+            EmbeddingMatch<TextSegment> match,
+            String query,
+            Map<String, RagDocumentEntity> documentsById) {
+        RagDocumentEntity document = documentsById.get(match.embeddingId());
+        if (document == null) {
+            return new RagSearchResult(
+                    "unknown",
+                    match.embeddingId(),
+                    buildSnippet(match.embedded().text(), query),
+                    match.score());
+        }
+        return new RagSearchResult(
+                document.getSourceType(),
+                document.getSourceId(),
+                buildSnippet(document.getContent(), query),
+                match.score());
+    }
+
+    private String buildSnippet(String content, String query) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        String normalized = content.replaceAll("\\s+", " ").trim();
+        String lowerQuery = query == null ? "" : query.trim().toLowerCase();
+        int maxLength = 240;
+        if (lowerQuery.isBlank()) {
+            return normalized.length() <= maxLength
+                    ? normalized
+                    : normalized.substring(0, maxLength) + "...";
+        }
+        int index = normalized.toLowerCase().indexOf(lowerQuery);
+        if (index < 0) {
+            return normalized.length() <= maxLength
+                    ? normalized
+                    : normalized.substring(0, maxLength) + "...";
+        }
+        int start = Math.max(0, index - 80);
+        int end = Math.min(normalized.length(), index + lowerQuery.length() + 160);
+        String snippet = normalized.substring(start, end);
+        if (start > 0) {
+            snippet = "..." + snippet;
+        }
+        if (end < normalized.length()) {
+            snippet = snippet + "...";
+        }
+        return snippet;
     }
 }
